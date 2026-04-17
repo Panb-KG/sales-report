@@ -202,7 +202,7 @@ html,body{width:100%;height:100%;overflow:hidden;
     <div id="zoomBar">
       <button class="zoom-btn" id="zoomIn" title="放大">+</button>
       <span class="zoom-label">缩放</span>
-      <input type="range" id="zoomSlider" min="80" max="600" step="10" value="115" title="拖动调整缩放"/>
+      <input type="range" id="zoomSlider" min="80" max="600" step="10" value="150" title="拖动调整缩放"/>
       <span class="zoom-label" id="zoomPct">115%</span>
       <button class="zoom-btn" id="zoomOut" title="缩小">−</button>
     </div>
@@ -529,7 +529,7 @@ function renderMap(){
     geo:{
       map:"chinaCustom",
       roam:true,
-      zoom:1.15,
+      zoom:1.5,
       center:[104.5,36],
       // 3D效果：通过itemStyle阴影模拟
       itemStyle:{
@@ -828,7 +828,7 @@ function initZoomBar(){
   });
 
   // 初始化填充色
-  applyZoom(115);
+  applyZoom(150);
 }
 </script>
 </body>
