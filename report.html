@@ -92,6 +92,41 @@ html,body{width:100%;height:100%;overflow:hidden;
 }
 #mapEl{width:100%;height:100%;}
 
+/* === 缩放工具条 === */
+#zoomBar{
+  position:absolute;right:14px;bottom:20px;z-index:150;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  background:#fff;border:1px solid var(--border);border-radius:24px;
+  padding:8px 6px;box-shadow:var(--shadow-md);
+  user-select:none;
+}
+.zoom-btn{
+  width:26px;height:26px;border-radius:50%;border:1px solid var(--border);
+  background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:16px;font-weight:700;color:var(--dim);line-height:1;
+  transition:background .15s,color .15s;flex-shrink:0;
+}
+.zoom-btn:hover{background:var(--bg);color:var(--text);}
+.zoom-btn:active{background:#e2e6ef;}
+#zoomSlider{
+  -webkit-appearance:none;appearance:none;
+  writing-mode:vertical-lr;direction:rtl;
+  width:4px;height:90px;
+  border-radius:2px;
+  background:linear-gradient(to bottom,#e2e6ef,#e2e6ef);
+  outline:none;cursor:pointer;
+  --fill-color:#94a3b8;
+}
+#zoomSlider::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:14px;height:14px;border-radius:50%;
+  background:#fff;border:2px solid #94a3b8;
+  cursor:pointer;transition:border-color .15s;
+  box-shadow:0 1px 3px rgba(0,0,0,.15);
+}
+#zoomSlider::-webkit-slider-thumb:hover{border-color:var(--text);}
+.zoom-label{font-size:9px;color:var(--light);letter-spacing:.3px;}
+
 /* === 弹层 === */
 #overlay{
   position:absolute;background:#fff;
@@ -162,6 +197,14 @@ html,body{width:100%;height:100%;overflow:hidden;
       <div class="ov-title" id="ovTitle"></div>
       <canvas id="bubCanvas" width="320" height="260" style="display:block;margin:0 auto;"></canvas>
       <div class="ov-list" id="ovList"></div>
+    </div>
+    <!-- 缩放工具条 -->
+    <div id="zoomBar">
+      <button class="zoom-btn" id="zoomIn" title="放大">+</button>
+      <span class="zoom-label">缩放</span>
+      <input type="range" id="zoomSlider" min="80" max="600" step="10" value="115" title="拖动调整缩放"/>
+      <span class="zoom-label" id="zoomPct">115%</span>
+      <button class="zoom-btn" id="zoomOut" title="缩小">−</button>
     </div>
   </div>
 
@@ -502,7 +545,17 @@ function renderMap(){
         itemStyle:{areaColor:co.light},
         label:{show:true,color:"#1e293b",fontSize:12,fontWeight:600},
       },
-      label:{show:false},
+      label:{
+        show:true,
+        color:"#64748b",
+        fontSize:9,
+        fontWeight:400,
+        formatter:p=>{
+          // 简化省名：去掉"省"/"市"/"自治区"等后缀
+          const n=p.name;
+          return n.replace(/省|市|自治区|维吾尔|回族|壮族/g,"");
+        },
+      },
       // 限制缩放范围
       scaleLimit:{min:0.8,max:6},
     },
@@ -726,11 +779,57 @@ fetch("china.json")
     echarts.registerMap("chinaCustom", geoData);
     document.getElementById("loadmask").style.display="none";
     renderAll();
+    initZoomBar();
   })
   .catch(err=>{
     document.getElementById("loadmask").textContent="地图数据加载失败："+err.message;
     console.error(err);
   });
+
+// ====================================================
+// 缩放工具条
+// ====================================================
+function initZoomBar(){
+  const slider=document.getElementById("zoomSlider");
+  const pctLabel=document.getElementById("zoomPct");
+  const btnIn=document.getElementById("zoomIn");
+  const btnOut=document.getElementById("zoomOut");
+
+  function applyZoom(v){
+    const zoom=Math.min(Math.max(v,80),600);
+    slider.value=zoom;
+    pctLabel.textContent=zoom+"%";
+    // 更新slider轨道填充色
+    const pct=((zoom-80)/(600-80)*100).toFixed(1);
+    slider.style.background=`linear-gradient(to bottom,#94a3b8 ${pct}%,#e2e6ef ${pct}%)`;
+    if(mapInst){
+      mapInst.setOption({geo:{zoom:zoom/100}});
+    }
+  }
+
+  slider.addEventListener("input",()=>applyZoom(Number(slider.value)));
+  btnIn.addEventListener("click",()=>applyZoom(Number(slider.value)+20));
+  btnOut.addEventListener("click",()=>applyZoom(Number(slider.value)-20));
+
+  // 监听地图自身缩放（鼠标滚轮/触摸板），同步回工具条
+  // ECharts 没有直接的 zoom 事件，用 georoam 事件
+  mapInst.on("georoam",()=>{
+    try{
+      const opt=mapInst.getOption();
+      const z=opt.geo&&opt.geo[0]&&opt.geo[0].zoom;
+      if(z){
+        const zPct=Math.round(z*100);
+        slider.value=zPct;
+        pctLabel.textContent=zPct+"%";
+        const pct=((zPct-80)/(600-80)*100).toFixed(1);
+        slider.style.background=`linear-gradient(to bottom,#94a3b8 ${pct}%,#e2e6ef ${pct}%)`;
+      }
+    }catch(e){}
+  });
+
+  // 初始化填充色
+  applyZoom(115);
+}
 </script>
 </body>
 </html>
